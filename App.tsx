@@ -1,98 +1,92 @@
-/**
- * Sample React Native App
- * https://github.com/facebook/react-native
- *
- * @format
- */
-
-import React from 'react';
-import type {PropsWithChildren} from 'react';
+import React, { useEffect, useState } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
-  SafeAreaView,
-  ScrollView,
   StatusBar,
   StyleSheet,
-  Text,
-  useColorScheme,
-  View,
 } from 'react-native';
+import { NavigationContainer } from '@react-navigation/native';
+import { createStackNavigator } from '@react-navigation/stack';
+import { GlobalColors } from './src/constants/styles';
+import LoginScreen from './src/screens/LoginScreen';
+import WelcomeScreen from './src/screens/WelcomeScreen';
+import SignupScreen from './src/screens/SignupScreen';
+import { Provider, useDispatch, useSelector } from 'react-redux';
+import store from './redux/store/store';
+import { authenticate, setLoading } from './redux/action/actions';
+import Loader from './src/components/Loader';
 
-import {
-  Colors,
-  DebugInstructions,
-  Header,
-  LearnMoreLinks,
-  ReloadInstructions,
-} from 'react-native/Libraries/NewAppScreen';
 
-type SectionProps = PropsWithChildren<{
-  title: string;
-}>;
+const Stack = createStackNavigator();
 
-function Section({children, title}: SectionProps): React.JSX.Element {
-  const isDarkMode = useColorScheme() === 'dark';
+function AuthStack() {
+
   return (
-    <View style={styles.sectionContainer}>
-      <Text
-        style={[
-          styles.sectionTitle,
-          {
-            color: isDarkMode ? Colors.white : Colors.black,
-          },
-        ]}>
-        {title}
-      </Text>
-      <Text
-        style={[
-          styles.sectionDescription,
-          {
-            color: isDarkMode ? Colors.light : Colors.dark,
-          },
-        ]}>
-        {children}
-      </Text>
-    </View>
+    <Stack.Navigator
+      screenOptions={{
+        headerStyle: { backgroundColor: GlobalColors.primary500 },
+        headerTintColor: 'white',
+      }}
+    >
+      <Stack.Screen name="Login" component={LoginScreen} /> 
+      <Stack.Screen name="Signup" component={SignupScreen} />
+    </Stack.Navigator>
   );
 }
 
-function App(): React.JSX.Element {
-  const isDarkMode = useColorScheme() === 'dark';
 
-  const backgroundStyle = {
-    backgroundColor: isDarkMode ? Colors.darker : Colors.lighter,
-  };
-
+const AuthenticatedStack = () => {
   return (
-    <SafeAreaView style={backgroundStyle}>
-      <StatusBar
-        barStyle={isDarkMode ? 'light-content' : 'dark-content'}
-        backgroundColor={backgroundStyle.backgroundColor}
-      />
-      <ScrollView
-        contentInsetAdjustmentBehavior="automatic"
-        style={backgroundStyle}>
-        <Header />
-        <View
-          style={{
-            backgroundColor: isDarkMode ? Colors.black : Colors.white,
-          }}>
-          <Section title="Step One">
-            Edit <Text style={styles.highlight}>App.tsx</Text> to change this
-            screen and then come back to see your edits.
-          </Section>
-          <Section title="See Your Changes">
-            <ReloadInstructions />
-          </Section>
-          <Section title="Debug">
-            <DebugInstructions />
-          </Section>
-          <Section title="Learn More">
-            Read the docs to discover what to do next:
-          </Section>
-          <LearnMoreLinks />
-        </View>
-      </ScrollView>
-    </SafeAreaView>
+    <Stack.Navigator
+      screenOptions={{
+        headerStyle: { backgroundColor: GlobalColors.primary500 },
+        headerTintColor: 'white',
+      }}
+    >
+      <Stack.Screen name="Welcome" component={WelcomeScreen} />
+    </Stack.Navigator>
+  );
+}
+
+// If user is authenticated then only show the authenticated screens
+const Navigation = () => {
+  const isAuthenticated = useSelector((state) => state.authState.isAuthenticated);
+  const isLoading = useSelector((state) => state.authState.isLoading);
+if(isLoading){
+  return<Loader message="Loading..."/>
+}
+  return (
+    <NavigationContainer> 
+      {isAuthenticated ? <AuthenticatedStack /> : <AuthStack />} 
+    </NavigationContainer>
+  );
+}
+
+
+// The below Root will check whether user has login previously or not , if logged in then no need to login again
+function Root() {
+  const dispatch = useDispatch();
+  useEffect(() => {
+
+    async function fetchToken() {
+      const storedToken = await AsyncStorage.getItem("token");
+      if (storedToken) {
+        dispatch(authenticate(storedToken))
+      }else{
+        dispatch(setLoading(false));
+      }
+    }
+    fetchToken();
+  }, [dispatch])
+
+  return<Navigation/>
+}
+
+const App = () => {
+  return (
+    <Provider store={store}>
+      <StatusBar barStyle={"light-content"} />
+      <Root />
+    </Provider>
   );
 }
 
